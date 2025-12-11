@@ -5,6 +5,7 @@ import glob
 import math
 import sys
 from dotenv import load_dotenv
+import shutil
 
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait 
@@ -16,9 +17,8 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 
 import concurrent.futures
 
-# --- FUNCIÓN CENTRAL PARA EJECUCIÓN PARALELA (Unidad de Trabajo Autónoma) ---
 
-def descargar_session_individual(session_uid, url_web, ruta_descarga, cstores_subdir, fechas, opciones):
+def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fechas, opciones, estado):
     
     def esperar_invisibilidad(driver, ruta, timeout=120):
         try:
@@ -72,8 +72,11 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, cstores_su
         return {'fecha':f'/html/body/div/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/div[{valor}]/div/input',
                 'org-store':f'/html/body/div/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/div[{valor}]/div[1]/span/span[1]/input'}[opcion]
 
+
     pag_carga = "//div[contains(@class, 'ant-modal-content')]"
     div_search = '/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/button[1]'
+    div_export_menu  = '/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/button[3]'
+    div_excel  = '/html/body/div[5]/div/ul/li[1]'
     div_export = '/html/body/div/div/div[1]/div[1]/div[5]/div/button[2]'
     div_filtro = "/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div[1]/div[2]/div/div/div[1]/div[2]/div/span/span"
     div_input_filtro = '/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]/div[1]/div[3]/div[3]/div/div[3]/div/div/div/div/div[1]/div/input[1]'
@@ -84,7 +87,7 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, cstores_su
     password = os.getenv('contraseña_arca')
     
     driver = None
-    ruta_completa_descarga = ruta_descarga + cstores_subdir
+    ruta_completa_descarga = ruta_descarga + canal
 
     try:
         print(f"[{session_uid}] Iniciando proceso de descarga...")
@@ -130,53 +133,66 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, cstores_su
         button_search.click()
         time.sleep(5)
         
-        filtro = driver.find_element(By.XPATH,div_filtro)
-        driver.execute_script("arguments[0].click();", filtro)
-        time.sleep(1)
+        if estado ==  "0":
+            #click al botón exportar
+            button_export_menu = tipo_elemento(driver, div_export_menu,'clickable')
+            button_export_menu.click()
+            time.sleep(1)
 
-        input_id_session = tipo_elemento(driver,div_input_filtro,'clickable')
-        time.sleep(1)
-        input_id_session.send_keys(Keys.CONTROL + 'a')
-        time.sleep(1)
-        input_id_session.send_keys(Keys.DELETE)
-        time.sleep(1)
-        
-        input_id_session.send_keys(session_uid) 
-        time.sleep(2)
-        input_id_session.send_keys(Keys.ENTER)
-        time.sleep(3)
+            #click opcion excel
+            button_excel = tipo_elemento(driver,div_excel,'existente')
+            button_excel.click()
+            time.sleep(15)
 
-        fila_aparece = tipo_elemento_css(driver, div_fila_css, 'css', timeout=30)
-        filas = driver.find_elements(By.CSS_SELECTOR, div_fila_css)
-        cod_ventana_principal = driver.current_window_handle
-        
-        ActionChains(driver).double_click(filas[0]).perform()
-        time.sleep(2)
-        
-        cod_ventanas = driver.window_handles
-        if len(cod_ventanas) > 1:
-            nueva_ventana = [h for h in cod_ventanas if h != cod_ventana_principal][0]
-            driver.switch_to.window(nueva_ventana)
-
-            esperar_invisibilidad(driver, pag_carga, timeout=60)
-            time.sleep(3)
-            
-            button_export = tipo_elemento(driver, div_export,'clickable')
-            button_export.click()
-            time.sleep(3)
-            
-            esperar_invisibilidad(driver, pag_carga, timeout=60)
-            time.sleep(3)
-
-            driver.close()
-            driver.switch_to.window(cod_ventana_principal)
-            time.sleep(5)
-            
-            print(f"[{session_uid}] Descarga finalizada exitosamente.")
-            return f"Éxito: {session_uid}"
         else:
-            print(f"[{session_uid}] ERROR: No se abrió la ventana secundaria.")
-            return f"Fallo: {session_uid} - No se abrió la ventana secundaria."
+
+            filtro = driver.find_element(By.XPATH,div_filtro)
+            driver.execute_script("arguments[0].click();", filtro)
+            time.sleep(1)
+
+            input_id_session = tipo_elemento(driver,div_input_filtro,'clickable')
+            time.sleep(1)
+            input_id_session.send_keys(Keys.CONTROL + 'a')
+            time.sleep(1)
+            input_id_session.send_keys(Keys.DELETE)
+            time.sleep(1)
+            
+            input_id_session.send_keys(session_uid) 
+            time.sleep(2)
+            input_id_session.send_keys(Keys.ENTER)
+            time.sleep(3)
+
+            fila_aparece = tipo_elemento_css(driver, div_fila_css, 'css', timeout=30)
+            filas = driver.find_elements(By.CSS_SELECTOR, div_fila_css)
+            cod_ventana_principal = driver.current_window_handle
+            
+            ActionChains(driver).double_click(filas[0]).perform()
+            time.sleep(2)
+            
+            cod_ventanas = driver.window_handles
+            if len(cod_ventanas) > 1:
+                nueva_ventana = [h for h in cod_ventanas if h != cod_ventana_principal][0]
+                driver.switch_to.window(nueva_ventana)
+
+                esperar_invisibilidad(driver, pag_carga, timeout=60)
+                time.sleep(3)
+                
+                button_export = tipo_elemento(driver, div_export,'clickable')
+                button_export.click()
+                time.sleep(3)
+                
+                esperar_invisibilidad(driver, pag_carga, timeout=60)
+                time.sleep(3)
+
+                driver.close()
+                driver.switch_to.window(cod_ventana_principal)
+                time.sleep(5)
+                
+                print(f"[{session_uid}] Descarga finalizada exitosamente.")
+                return f"Éxito: {session_uid}"
+            else:
+                print(f"[{session_uid}] ERROR: No se abrió la ventana secundaria.")
+                return f"Fallo: {session_uid} - No se abrió la ventana secundaria."
 
     except (WebDriverException, TimeoutException) as e:
         print(f"[{session_uid}] FALLO: Error de Selenium o Timeout: {e}")
@@ -194,12 +210,81 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, cstores_su
 # --- LÓGICA PRINCIPAL DE PRE-PROCESAMIENTO Y EJECUCIÓN PARALELA ---
 
 if __name__ == '__main__':
+
+    def mover_descargas(opcion):
+        
+        rt2 = f'\{opcion}'
+        rt1 = r"C:\Users\bbartolome\Downloads"
+        ruta_origen = rt1 + rt2
+
+        if opcion == 'C-STORES':
+            ruta_destino = r'C:\Users\bbartolome\Desktop\CODBARRA\CARPETA1'
+            #ruta_destino = r'C:\Users\bbartolome\OneDrive - Lock & Asociados\Gestión TI - PROYECTO LINDLEY\PBI-ACL-Archivos\Validador CSTORES_NOV'
+        else:
+            ruta_destino = r'C:\Users\bbartolome\Desktop\CODBARRA\CARPETA2'
+            #ruta_destino = r'C:\Users\bbartolome\OneDrive - Lock & Asociados\Gestión TI - PROYECTO LINDLEY\PBI-ACL-Archivos\ValidarAASS_NOV'
+
+
+        patron_excel = 'Session_export*.xlsx'
+        ruta_patron = os.path.join(ruta_origen, patron_excel)
+        archivos_a_mover = glob.glob(ruta_patron)
+
+
+        if not archivos_a_mover:
+            print("No se encontraron archivos")
+        else:
+            print(f"{len(archivos_a_mover)} archivos encontrados.")
+            
+            if not os.path.exists(ruta_destino):
+                os.makedirs(ruta_destino)
+                print("carpeta creada")
+
+            for ruta_origen_archivo in archivos_a_mover:
+                
+                nombre_archivo = os.path.basename(ruta_origen_archivo)
+                ruta_destino_archivo = os.path.join(ruta_destino, nombre_archivo)
+                
+                try:
+                    shutil.move(ruta_origen_archivo, ruta_destino_archivo)
+
+                except Exception as e:
+                    print(f"Error al mover {nombre_archivo}: {e}")
+
+
+    def Canal_Lindley():
+        
+        while True:
+            print("\n--- MENÚ DE CANALES ---")
+            print("1. Autoservicio")
+            print("2. C-stores")
+            print("0. Salir")
+            print("------------------------")
+
+            entrada_usuario = input("Ingrese su opción (0 para salir): ").strip()
+            
+            try:
+                opcion = int(entrada_usuario)
+                
+                if opcion == 0:
+                    print("Saliendo del menú de canales.")
+                    return None
+                elif opcion == 1:
+                    return "AUTOSERVICIO"
+                elif opcion == 2:
+                    return "C-STORE"
+                else:
+                    print(f"Opción inválida")
+            
+            except ValueError:
+                print(f"Entrada inválida: No es un número. Por favor, ingrese un número.")
+                
     
+    opcion = Canal_Lindley()
     ruta_descarga = r'C:\Users\bbartolome\Downloads'
-    cstores = r"\CSTORES"
+    canal = f"\{opcion}"
     
-    fechas = ['12/06/2025', '12/06/2025'] #"mm/dd/yyyy"
-    opciones = ['','C-STORE']
+    fechas = ['12/05/2025', '12/05/2025'] #"mm/dd/yyyy"
+    opciones = ['',f'{opcion}']
     
     load_dotenv(dotenv_path='credenciales.env')
     url_web = os.getenv('ruta_web')
@@ -220,8 +305,10 @@ if __name__ == '__main__':
                 print(f"Error al intentar cargar el archivo: {e}")
                 return None
     
+    descargar_session_individual("NaN", url_web, ruta_descarga, canal, fechas, opciones, "0")
+
     try:
-        ruta_descargas_carpetas = ruta_descarga + cstores
+        ruta_descargas_carpetas = ruta_descarga + canal
         patron = os.path.join(ruta_descargas_carpetas, 'Survey*.XLSX')
         archivos_encontrados = glob.glob(patron)
         
@@ -240,7 +327,7 @@ if __name__ == '__main__':
         sys.exit(1)
     
     
-    MAX_PROCESOS = 8 # Número de navegadores/procesos concurrentes
+    MAX_PROCESOS = 6 # Número de navegadores/procesos concurrentes
 
     print(f"\n--- 2. INICIO DE DESCARGAS PARALELAS con {MAX_PROCESOS} procesos ---")
 
@@ -249,19 +336,21 @@ if __name__ == '__main__':
         
         resultados = executor.map(
             descargar_session_individual,
-            lista_uids, # Argumento variable (UID)
+            lista_uids,
             [url_web] * len(lista_uids),
             [ruta_descarga] * len(lista_uids),
-            [cstores] * len(lista_uids),
+            [canal] * len(lista_uids),
             [fechas] * len(lista_uids),
-            [opciones] * len(lista_uids)
+            [opciones] * len(lista_uids),
+            ["1"] * len(lista_uids)
         )
         
         for resultado in resultados:
             print(f"Resultado final: {resultado}")
             
-    print("\n--- 3. PROCESO PARALELO FINALIZADO ---")
+    print("\n--- 3. PROCESO PARALELO FINALIZADO ---\n")
+
+    mover_descargas(opcion)
 
 
 
-    
