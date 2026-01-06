@@ -217,7 +217,7 @@ if __name__ == '__main__':
         rt1 = r"C:\Users\bbartolome\Downloads"
         ruta_origen = rt1 + rt2
 
-        if opcion == 'C-STORES':
+        if opcion == 'C-STORE':
             ruta_destino = r'C:\Users\bbartolome\Desktop\CODBARRA\CARPETA1'
             #ruta_destino = r'C:\Users\bbartolome\OneDrive - Lock & Asociados\Gestión TI - PROYECTO LINDLEY\PBI-ACL-Archivos\Validador CSTORES_NOV'
         else:
@@ -283,7 +283,7 @@ if __name__ == '__main__':
     ruta_descarga = r'C:\Users\bbartolome\Downloads'
     canal = f"\{opcion}"
     
-    fechas = ['12/05/2025', '12/05/2025'] #"mm/dd/yyyy"
+    fechas = ['12/30/2025', '12/31/2025'] #"mm/dd/yyyy"
     opciones = ['',f'{opcion}']
     
     load_dotenv(dotenv_path='credenciales.env')
@@ -317,7 +317,7 @@ if __name__ == '__main__':
         if Dataframe is None:
             sys.exit(1)
             
-        Dataframe_validos = Dataframe[Dataframe['Session Review Status'] != 'Reject'].reset_index(drop=True)
+        Dataframe_validos = Dataframe[(Dataframe['Session Review Status'] != 'Reject') & (Dataframe['Survey Status'] != 'InComplete')].reset_index(drop=True)
         lista_uids = Dataframe_validos['Session Uid'].tolist()
         
         print(f"--- 1. Éxito: {len(lista_uids)} Session Uids válidos encontrados para descargar ---")
@@ -327,7 +327,7 @@ if __name__ == '__main__':
         sys.exit(1)
     
     
-    MAX_PROCESOS = 6 # Número de navegadores/procesos concurrentes
+    MAX_PROCESOS = 7 # Número de navegadores/procesos concurrentes
 
     print(f"\n--- 2. INICIO DE DESCARGAS PARALELAS con {MAX_PROCESOS} procesos ---")
 
