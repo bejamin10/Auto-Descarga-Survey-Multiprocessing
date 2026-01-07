@@ -56,7 +56,20 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fec
         input_password.send_keys(pwd)
         time.sleep(0.5)
         button_login.click()
-        time.sleep(2) 
+        time.sleep(2)
+
+    def opciones_div(valor, opcion):
+        
+        diccionario = {1: 'Client', 2:'Organization', 4: 'From Date', 5: 'To Date', 8: 'Sub Trade Channel'}
+
+        return {'filtro':f"//div[contains(@class, 'filter-modal') or contains(@class, 'ant-modal')]//label[text()='{diccionario[valor]}']/..//input",
+                'div_export_filtro':f'/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div/div[2]/div/button[{valor}]'}[opcion]
+
+
+    def filtro_survey(driver):
+        div_filtro_survey = opciones_div(1, 'div_export_filtro')
+        boton_filtro_survey = tipo_elemento(driver, div_filtro_survey, 'clickable')
+        boton_filtro_survey.click()
 
     def click_survey(driver):
         xpath_mng = "//div[contains(@data-menu-id, '/SurveyManagement')]"
@@ -67,20 +80,20 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fec
         time.sleep(1)
         boton_survey_rvw = tipo_elemento(driver, xpath_rvw, 'clickable', timeout=30)
         boton_survey_rvw.click()
+        filtro_survey(driver)
         
-    def opciones_div(valor, opcion):
-        return {'fecha':f'/html/body/div/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/div[{valor}]/div/input',
-                'org-store':f'/html/body/div/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/div[{valor}]/div[1]/span/span[1]/input'}[opcion]
-
 
     pag_carga = "//div[contains(@class, 'ant-modal-content')]"
-    div_search = '/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/button[1]'
-    div_export_menu  = '/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/button[3]'
-    div_excel  = '/html/body/div[5]/div/ul/li[1]'
-    div_export = '/html/body/div/div/div[1]/div[1]/div[5]/div/button[2]'
-    div_filtro = "/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div[1]/div[2]/div/div/div[1]/div[2]/div/span/span"
+    div_excel = '/html/body/div[3]/div/ul/li[1]'
+    div_export = '/html/body/div[1]/div/div[1]/div[2]/button[3]'
+    div_filtro = "/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]/div[1]/div[3]/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div[2]/div/span/span"
     div_input_filtro = '/html/body/div[1]/div/div[2]/div[1]/div/div[2]/div[2]/div/div[2]/div[1]/div[2]/div[1]/div[3]/div[3]/div/div[3]/div/div/div/div/div[1]/div/input[1]'
     div_fila_css = "div.ag-row[row-index='0']"
+
+    #NUEVOS PATHS
+    #div_apply_filtro_survey = '/html/body/div[4]/div/div/div/div[1]/div/div[3]/button[2]'
+    div_apply_filtro_survey = "//button[contains(@class, 'ant-btn') and .//span[text()='Apply Filters']]"
+
     
     load_dotenv(dotenv_path='credenciales.env')
     usuario_arca = os.getenv('usuario_arca')
@@ -94,6 +107,7 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fec
         
         options_driver = webdriver.ChromeOptions()
         options_driver.add_argument('--disable-extensions')
+        #options_driver.add_argument("--headless=new")
 
         options_driver.add_experimental_option("prefs", {
             "download.default_directory": ruta_completa_descarga,
@@ -112,14 +126,14 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fec
 
         for i in range(2,9):
             if i == 2 or i == 8:
-                div_org_c_store = opciones_div(i,'org-store')
+                div_org_c_store = opciones_div(i,'filtro')
                 input_org_c_tore = tipo_elemento(driver,div_org_c_store,'clickable')
                 input_org_c_tore.send_keys(opciones[math.floor(math.sqrt(i))-1])
-                time.sleep(1)
-                input_org_c_tore.send_keys(Keys.ENTER)
                 time.sleep(2)
+                input_org_c_tore.send_keys(Keys.ENTER)
+                time.sleep(1)
             elif i == 4 or i == 5:
-                div_fechas = opciones_div(i, 'fecha')
+                div_fechas = opciones_div(i, 'filtro')
                 input_fecha = tipo_elemento(driver, div_fechas,'clickable')
                 input_fecha.send_keys(Keys.CONTROL + 'a')
                 time.sleep(1)
@@ -129,20 +143,28 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fec
                 input_fecha.send_keys(Keys.ENTER)
                 time.sleep(2)
         
-        button_search = tipo_elemento(driver, div_search,'clickable')
+        print("CORRIDA 1")
+        button_search = tipo_elemento(driver, div_apply_filtro_survey,'clickable')
         button_search.click()
         time.sleep(5)
+        print("CORRIDA 2")
         
         if estado ==  "0":
             #click al botón exportar
-            button_export_menu = tipo_elemento(driver, div_export_menu,'clickable')
-            button_export_menu.click()
+            div_export_survey = opciones_div(2, 'div_export_filtro')
+            button_export_survey = tipo_elemento(driver, div_export_survey,'clickable')
+            button_export_survey.click()
             time.sleep(1)
 
             #click opcion excel
             button_excel = tipo_elemento(driver,div_excel,'existente')
             button_excel.click()
-            time.sleep(15)
+            
+            #AQUI SE ABRE OTRA VENTANA.
+            #DEBEMOS CONTAR LAS VENTANAS ACTUALES Y CUANDO HAYA SOLO 1 VENTANA ACTIVA QUIERE DECIR QUE YA SE DESCARGÓ EL EXCEL
+            #RECIEN AHI PODREMOS CERRAR EL DRIVER
+            #POR MIENTRAS USAREMOS EL TIME SLEEP(8)
+            time.sleep(8)
 
         else:
 
@@ -186,7 +208,7 @@ def descargar_session_individual(session_uid, url_web, ruta_descarga, canal, fec
 
                 driver.close()
                 driver.switch_to.window(cod_ventana_principal)
-                time.sleep(5)
+                time.sleep(2)
                 
                 print(f"[{session_uid}] Descarga finalizada exitosamente.")
                 return f"Éxito: {session_uid}"
@@ -283,7 +305,7 @@ if __name__ == '__main__':
     ruta_descarga = r'C:\Users\bbartolome\Downloads'
     canal = f"\{opcion}"
     
-    fechas = ['12/30/2025', '12/31/2025'] #"mm/dd/yyyy"
+    fechas = ['01/01/2025', '01/06/2025'] #"mm/dd/yyyy"
     opciones = ['',f'{opcion}']
     
     load_dotenv(dotenv_path='credenciales.env')
@@ -317,7 +339,7 @@ if __name__ == '__main__':
         if Dataframe is None:
             sys.exit(1)
             
-        Dataframe_validos = Dataframe[(Dataframe['Session Review Status'] != 'Reject') & (Dataframe['Survey Status'] != 'InComplete')].reset_index(drop=True)
+        Dataframe_validos = Dataframe[(Dataframe['Session Review Status'] != 'Rejected') & (Dataframe['Survey Status'] != 'InComplete')].reset_index(drop=True)
         lista_uids = Dataframe_validos['Session Uid'].tolist()
         
         print(f"--- 1. Éxito: {len(lista_uids)} Session Uids válidos encontrados para descargar ---")
