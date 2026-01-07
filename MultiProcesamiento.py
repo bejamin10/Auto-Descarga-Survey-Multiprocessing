@@ -376,3 +376,5 @@ if __name__ == '__main__':
 
 
 
+#NOTA FINAL 
+#Pensar en abrir multiples pestañas por cada 10 datos de un dataframe que se reflejen en la tabla del survey
