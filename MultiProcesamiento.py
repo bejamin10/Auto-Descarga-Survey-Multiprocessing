@@ -305,7 +305,7 @@ if __name__ == '__main__':
     ruta_descarga = r'C:\Users\bbartolome\Downloads'
     canal = f"\{opcion}"
     
-    fechas = ['01/01/2025', '01/06/2025'] #"mm/dd/yyyy"
+    fechas = ['01/06/2026', '01/11/2026'] #"mm/dd/yyyy"
     opciones = ['',f'{opcion}']
     
     load_dotenv(dotenv_path='credenciales.env')
